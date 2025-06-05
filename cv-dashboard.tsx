@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,70 +11,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, Search, MapPin, Mail, Phone, Calendar, User, FileText, Moon, Sun, ExternalLink } from "lucide-react"
+import {
+  Upload,
+  Search,
+  MapPin,
+  Mail,
+  Phone,
+  Calendar,
+  User,
+  FileText,
+  Moon,
+  Sun,
+  ExternalLink,
+  Check,
+  Laptop,
+} from "lucide-react"
 import { useTheme } from "next-themes"
-
-// Mock data structure based on your provided format
-const mockCandidates = [
-  {
-    full_name: "Tu Mai The Nhan",
-    email: "nhan.tu2107@gmail.com",
-    phone: "0865684801",
-    location: "Ho Chi Minh City",
-    id: 1,
-    created_at: "2025-06-02T08:27:13.646321Z",
-    updated_at: null,
-    skills: [
-      { name: "HTML" },
-      { name: "Neo4j" },
-      { name: "NumPy" },
-      { name: "React Native" },
-      { name: "Git" },
-      { name: "C++" },
-      { name: "Scikit-Learn" },
-      { name: "Flutter" },
-      { name: "LangChain" },
-      { name: "Ruby" },
-      { name: "Pandas" },
-      { name: "FastAPI" },
-      { name: "Docker" },
-      { name: "MQTT" },
-      { name: "ReactJS" },
-      { name: "SQL" },
-      { name: "Python" },
-      { name: "TensorFlow" },
-      { name: "Machine Learning" },
-      { name: "Deep Learning" },
-    ],
-    cv_file_id: "199cBPeXGHG3eSUnQGwgCS0ajOl3pQN37",
-  },
-  {
-    full_name: "Yunlong Jiao",
-    email: "yljiao.ustc@gmail.com",
-    phone: "+44 7400 724281",
-    location: "London, UK",
-    id: 2,
-    created_at: "2025-06-02T13:54:01.783462Z",
-    updated_at: null,
-    skills: [
-      { name: "Python (numpy, pandas, scikit-learn)" },
-      { name: "Large Language Models" },
-      { name: "Feature Engineering" },
-      { name: "Agile Development" },
-      { name: "Cloud Computing (AWS, SageMaker)" },
-      { name: "SQL" },
-      { name: "Information Extraction" },
-      { name: "R" },
-      { name: "Model Development" },
-      { name: "Deep Learning Frameworks (PyTorch, MXNet)" },
-      { name: "Natural Language Processing" },
-      { name: "Python" },
-      { name: "Neural Text-to-Speech" },
-      { name: "C/C++" },
-    ],
-    cv_file_id: "1pKDqCeElqc4nK2OO4unz3DnflUAyDRVN",
-  },
-]
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import axios from "axios"
 
 interface Candidate {
   full_name: string
@@ -88,29 +42,130 @@ interface Candidate {
   cv_file_id: string
 }
 
+const EDUCATION_LEVELS = [
+  "High School",
+  "Associate Degree",
+  "Bachelor's Degree",
+  "Master's Degree",
+  "PhD",
+  "Other"
+]
+
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      className="border-green-200 hover:bg-green-50 hover:border-green-300 dark:border-green-800 dark:hover:bg-green-950"
-    >
-      <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      <span className="sr-only">Toggle theme</span>
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className="border-green-200 hover:bg-green-50 hover:border-green-300 dark:border-green-800 dark:hover:bg-green-950"
+        >
+          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() => setTheme("light")}
+          className={theme === "light" ? "bg-green-50 dark:bg-green-900" : ""}
+        >
+          <Sun className="mr-2 h-4 w-4" />
+          <span>Light</span>
+          {theme === "light" && <Check className="ml-auto h-4 w-4 text-green-600" />}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setTheme("dark")}
+          className={theme === "dark" ? "bg-green-50 dark:bg-green-900" : ""}
+        >
+          <Moon className="mr-2 h-4 w-4" />
+          <span>Dark</span>
+          {theme === "dark" && <Check className="ml-auto h-4 w-4 text-green-600" />}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setTheme("system")}
+          className={theme === "system" ? "bg-green-50 dark:bg-green-900" : ""}
+        >
+          <Laptop className="mr-2 h-4 w-4" />
+          <span>System</span>
+          {theme === "system" && <Check className="ml-auto h-4 w-4 text-green-600" />}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
 export default function CVDashboard() {
   const [uploadedCV, setUploadedCV] = useState<Candidate | null>(null)
+  const [formSearchQuery, setFormSearchQuery] = useState("")
+  const [formLocationFilter, setFormLocationFilter] = useState("")
+  const [formSkillFilter, setFormSkillFilter] = useState("")
+  const [formMinExperience, setFormMinExperience] = useState("")
+  const [formEducationLevel, setFormEducationLevel] = useState("")
+
   const [searchQuery, setSearchQuery] = useState("")
   const [locationFilter, setLocationFilter] = useState("")
   const [skillFilter, setSkillFilter] = useState("")
-  const [candidates] = useState<Candidate[]>(mockCandidates)
+  const [minExperience, setMinExperience] = useState("")
+  const [educationLevel, setEducationLevel] = useState("")
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [skills, setSkills] = useState<string[]>([])
+  const [locations, setLocations] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  
+  const API_BASE_URL = "http://localhost:8000"
+  // Fetch skills and locations for filters
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/v1/search/skills`).then(res => setSkills(res.data)).catch(() => setSkills([]))
+    axios.get(`${API_BASE_URL}/api/v1/search/locations`).then(res => setLocations(res.data)).catch(() => setLocations([]))
+  }, [])
+
+  // Fetch candidates (only when search/filter state changes)
+  useEffect(() => {
+    setLoading(true)
+    // If any filter/search is set, use semantic search endpoint
+    if (
+      searchQuery ||
+      minExperience ||
+      (skillFilter && skillFilter !== "all") ||
+      (locationFilter && locationFilter !== "all") ||
+      (educationLevel && educationLevel !== "all")
+    ) {
+      axios.get(`${API_BASE_URL}/api/v1/search/semantic`, {
+        params: {
+          ...(searchQuery ? { query: searchQuery } : {}),
+          min_experience_years: minExperience || undefined,
+          required_skills: skillFilter && skillFilter !== "all" ? [skillFilter] : undefined,
+          location: locationFilter && locationFilter !== "all" ? locationFilter : undefined,
+          education_level: educationLevel && educationLevel !== "all" ? educationLevel : undefined,
+          limit: 10,
+          offset: 0,
+        },
+        paramsSerializer: params => {
+    const usp = new URLSearchParams()
+    Object.entries(params).forEach(([key, val]) => {
+      if (Array.isArray(val)) {
+        val.forEach(v => usp.append(key, v))
+      } else if (val !== undefined) {
+        usp.append(key, val)
+      }
+    })
+    return usp.toString().replace(/\+/g, '%20')
+  }
+      })
+        .then(res => setCandidates(res.data))
+        .catch(() => setCandidates([]))
+        .finally(() => setLoading(false))
+    } else {
+      // No filters: get all candidates
+      axios.get(`${API_BASE_URL}/api/v1/candidates`, { params: { limit: 10, skip: 0 } })
+        .then(res => setCandidates(res.data))
+        .catch(() => setCandidates([]))
+        .finally(() => setLoading(false))
+    }
+  }, [searchQuery, minExperience, skillFilter, locationFilter, educationLevel])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -238,6 +293,29 @@ export default function CVDashboard() {
     </Card>
   )
 
+  // Handler for Search button
+  const handleSearch = () => {
+    setSearchQuery(formSearchQuery)
+    setLocationFilter(formLocationFilter)
+    setSkillFilter(formSkillFilter)
+    setMinExperience(formMinExperience)
+    setEducationLevel(formEducationLevel)
+  }
+
+  // Handler for Clear Filters button
+  const handleClearFilters = () => {
+    setFormSearchQuery("")
+    setFormLocationFilter("")
+    setFormSkillFilter("")
+    setFormMinExperience("")
+    setFormEducationLevel("")
+    setSearchQuery("")
+    setLocationFilter("")
+    setSkillFilter("")
+    setMinExperience("")
+    setEducationLevel("")
+  }
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
@@ -316,52 +394,83 @@ export default function CVDashboard() {
               <CardDescription>Use semantic search and filters to find the perfect candidates</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="search">Search</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder="Search by name or skills..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by name, skills, etc..."
+                      value={formSearchQuery}
+                      onChange={(e) => setFormSearchQuery(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Select value={locationFilter} onValueChange={setLocationFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Locations</SelectItem>
-                      <SelectItem value="Ho Chi Minh City">Ho Chi Minh City</SelectItem>
-                      <SelectItem value="London">London</SelectItem>
-                      <SelectItem value="New York">New York</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="min-experience">Min Experience (years)</Label>
+                  <Input
+                    id="min-experience"
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 2"
+                    value={formMinExperience}
+                    onChange={e => setFormMinExperience(e.target.value)}
+                  />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="skill">Skills</Label>
-                  <Select value={skillFilter} onValueChange={setSkillFilter}>
+                  <Label htmlFor="skills">Skills</Label>
+                  <Select value={formSkillFilter} onValueChange={setFormSkillFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by skill" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Skills</SelectItem>
-                      <SelectItem value="Python">Python</SelectItem>
-                      <SelectItem value="JavaScript">JavaScript</SelectItem>
-                      <SelectItem value="React">React</SelectItem>
-                      <SelectItem value="Machine Learning">Machine Learning</SelectItem>
-                      <SelectItem value="SQL">SQL</SelectItem>
+                      {skills.map((skill) => (
+                        <SelectItem key={skill} value={skill}>{skill}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Select value={formLocationFilter} onValueChange={setFormLocationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Locations</SelectItem>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="education">Education Level</Label>
+                  <Select value={formEducationLevel} onValueChange={setFormEducationLevel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by education" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      {EDUCATION_LEVELS.map((level) => (
+                        <SelectItem key={level} value={level}>{level}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-4 mt-4">
+                <Button onClick={handleSearch} className="bg-green-600 hover:bg-green-700 text-white">Search</Button>
+                <Button
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
+                >
+                  Clear Filters
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -369,24 +478,17 @@ export default function CVDashboard() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold">Candidates ({filteredCandidates.length})</h3>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery("")
-                  setLocationFilter("")
-                  setSkillFilter("")
-                }}
-                className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
-              >
-                Clear Filters
-              </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredCandidates.map((candidate) => (
-                <CandidateCard key={candidate.id} candidate={candidate} />
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-12">Loading candidates...</div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredCandidates.map((candidate) => (
+                  <CandidateCard key={candidate.id} candidate={candidate} />
+                ))}
+              </div>
+            )}
 
             {filteredCandidates.length === 0 && (
               <Card>
