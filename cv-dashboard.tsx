@@ -29,6 +29,14 @@ import {
 import { useTheme } from "next-themes"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import axios from "axios"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@/components/ui/dialog"
 
 interface Candidate {
   full_name: string
@@ -105,7 +113,7 @@ export default function CVDashboard() {
   const [formMinExperience, setFormMinExperience] = useState("")
   const [formEducationLevel, setFormEducationLevel] = useState("")
 
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState<string>("")
   const [locationFilter, setLocationFilter] = useState("")
   const [skillFilter, setSkillFilter] = useState("")
   const [minExperience, setMinExperience] = useState("")
@@ -114,6 +122,8 @@ export default function CVDashboard() {
   const [skills, setSkills] = useState<string[]>([])
   const [locations, setLocations] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [semanticDetails, setSemanticDetails] = useState<any[]>([])
+  const [showSemanticDetails, setShowSemanticDetails] = useState(false)
   
   const API_BASE_URL = "http://localhost:8000"
   // Fetch skills and locations for filters
@@ -135,7 +145,7 @@ export default function CVDashboard() {
     ) {
       axios.get(`${API_BASE_URL}/api/v1/search/semantic`, {
         params: {
-          ...(searchQuery ? { query: searchQuery } : {}),
+          ...(searchQuery ? { query: String(searchQuery) } : {}),
           min_experience_years: minExperience || undefined,
           required_skills: skillFilter && skillFilter !== "all" ? [skillFilter] : undefined,
           location: locationFilter && locationFilter !== "all" ? locationFilter : undefined,
@@ -295,11 +305,43 @@ export default function CVDashboard() {
 
   // Handler for Search button
   const handleSearch = () => {
+    setShowSemanticDetails(false)
     setSearchQuery(formSearchQuery)
     setLocationFilter(formLocationFilter)
     setSkillFilter(formSkillFilter)
     setMinExperience(formMinExperience)
     setEducationLevel(formEducationLevel)
+  }
+
+  // Handler for Semantic Detail Search button
+  const handleSemanticDetailSearch = () => {
+    setShowSemanticDetails(true)
+    setLoading(true)
+    axios.get(`${API_BASE_URL}/api/v1/search/semantic`, {
+      params: {
+        ...(formSearchQuery ? { query: String(formSearchQuery) } : {}),
+        min_experience_years: formMinExperience || undefined,
+        required_skills: formSkillFilter && formSkillFilter !== "all" ? [formSkillFilter] : undefined,
+        location: formLocationFilter && formLocationFilter !== "all" ? formLocationFilter : undefined,
+        education_level: formEducationLevel && formEducationLevel !== "all" ? formEducationLevel : undefined,
+        limit: 10,
+        offset: 0,
+      },
+      paramsSerializer: params => {
+        const usp = new URLSearchParams()
+        Object.entries(params).forEach(([key, val]) => {
+          if (Array.isArray(val)) {
+            val.forEach(v => usp.append(key, v))
+          } else if (val !== undefined) {
+            usp.append(key, val)
+          }
+        })
+        return usp.toString().replace(/\+/g, '%20')
+      }
+    })
+      .then(res => setSemanticDetails(res.data))
+      .catch(() => setSemanticDetails([]))
+      .finally(() => setLoading(false))
   }
 
   // Handler for Clear Filters button
@@ -471,6 +513,13 @@ export default function CVDashboard() {
                 >
                   Clear Filters
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleSemanticDetailSearch}
+                  className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
+                >
+                  Semantic Detail Search
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -502,6 +551,155 @@ export default function CVDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Semantic Details Modal */}
+      <Dialog open={showSemanticDetails} onOpenChange={setShowSemanticDetails}>
+        <DialogContent className="max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Semantic Search Details ({semanticDetails.length})</DialogTitle>
+            <DialogDescription>
+              These are the full details returned from the semantic search API.
+            </DialogDescription>
+          </DialogHeader>
+          {loading ? (
+            <div className="text-center py-12">Loading details...</div>
+          ) : (
+            semanticDetails.length === 0 ? (
+              <div className="text-center text-muted-foreground">No detailed results found.</div>
+            ) : (
+              <div className="space-y-6">
+                {semanticDetails.map((detail: any, idx: number) => (
+                  <div key={idx} className="border rounded-lg p-4 bg-muted/10">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                      <div>
+                        <div className="text-lg font-bold flex items-center gap-2">
+                          {detail.full_name}
+                          <span className="text-xs text-muted-foreground">#{detail.id}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-1">
+                          <span>{detail.email}</span>
+                          <span>{detail.phone}</span>
+                          <span>{detail.location}</span>
+                        </div>
+                      </div>
+                      <a
+                        href={`https://drive.google.com/file/d/${detail.cv_file_id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-700 dark:text-green-300 underline text-sm font-medium"
+                      >
+                        View CV
+                      </a>
+                    </div>
+                    {/* Skills */}
+                    {detail.skills && detail.skills.length > 0 && (
+                      <div className="mb-2">
+                        <div className="font-semibold text-sm mb-1">Skills</div>
+                        <div className="flex flex-wrap gap-2">
+                          {detail.skills.map((skill: any, i: number) => (
+                            <span key={i} className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 px-2 py-1 rounded text-xs">
+                              {skill.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Education */}
+                    {detail.education && detail.education.length > 0 && (
+                      <div className="mb-2">
+                        <div className="font-semibold text-sm mb-1">Education</div>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {detail.education.map((edu: any, i: number) => (
+                            <li key={i}>
+                              <div className="font-medium">{edu.degree} - {edu.institution}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {edu.field_of_study}
+                                {edu.start_date && (
+                                  <> | {new Date(edu.start_date).toLocaleDateString()} - {edu.end_date ? new Date(edu.end_date).toLocaleDateString() : 'Present'}</>
+                                )}
+                              </div>
+                              {edu.description && <div className="text-xs mt-1">{edu.description}</div>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Work Experience */}
+                    {detail.work_experience && detail.work_experience.length > 0 && (
+                      <div className="mb-2">
+                        <div className="font-semibold text-sm mb-1">Work Experience</div>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {detail.work_experience.map((work: any, i: number) => (
+                            <li key={i}>
+                              <div className="font-medium">{work.position} - {work.company}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {work.location && <>{work.location} | </>}
+                                {work.start_date && (
+                                  <>{new Date(work.start_date).toLocaleDateString()} - {work.end_date ? new Date(work.end_date).toLocaleDateString() : 'Present'}</>
+                                )}
+                              </div>
+                              {work.description && <div className="text-xs mt-1">{work.description}</div>}
+                              {work.achievements && <div className="text-xs mt-1">Achievements: {work.achievements}</div>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Certifications */}
+                    {detail.certifications && detail.certifications.length > 0 && (
+                      <div className="mb-2">
+                        <div className="font-semibold text-sm mb-1">Certifications</div>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {detail.certifications.map((cert: any, i: number) => (
+                            <li key={i}>
+                              <div className="font-medium">{cert.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {cert.issuer && <>{cert.issuer} | </>}
+                                {cert.issue_date && <>Issued: {new Date(cert.issue_date).toLocaleDateString()}</>}
+                                {cert.expiry_date && <> | Expires: {new Date(cert.expiry_date).toLocaleDateString()}</>}
+                              </div>
+                              {cert.credential_url && (
+                                <a href={cert.credential_url} target="_blank" rel="noopener noreferrer" className="text-xs underline text-green-700 dark:text-green-300">Credential</a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Projects */}
+                    {detail.projects && detail.projects.length > 0 && (
+                      <div className="mb-2">
+                        <div className="font-semibold text-sm mb-1">Projects</div>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {detail.projects.map((proj: any, i: number) => (
+                            <li key={i}>
+                              <div className="font-medium">{proj.name}</div>
+                              {proj.description && <div className="text-xs mt-1">{proj.description}</div>}
+                              {proj.technologies && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {Array.isArray(proj.technologies)
+                                    ? proj.technologies.map((tech: string, j: number) => (
+                                        <span key={j} className="bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{tech}</span>
+                                      ))
+                                    : <span className="bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{proj.technologies}</span>
+                                  }
+                                </div>
+                              )}
+                              {proj.url && (
+                                <a href={proj.url} target="_blank" rel="noopener noreferrer" className="text-xs underline text-green-700 dark:text-green-300">Project Link</a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
