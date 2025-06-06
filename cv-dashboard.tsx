@@ -177,29 +177,20 @@ export default function CVDashboard() {
     }
   }, [searchQuery, minExperience, skillFilter, locationFilter, educationLevel])
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Simulate CV processing and data extraction
-      const mockExtractedData: Candidate = {
-        full_name: "John Doe",
-        email: "john.doe@example.com",
-        phone: "+1 234 567 8900",
-        location: "New York, USA",
-        id: Date.now(),
-        created_at: new Date().toISOString(),
-        updated_at: null,
-        skills: [
-          { name: "JavaScript" },
-          { name: "React" },
-          { name: "Node.js" },
-          { name: "TypeScript" },
-          { name: "Python" },
-          { name: "AWS" },
-        ],
-        cv_file_id: `${Date.now()}mockFileId`,
+      const formData = new FormData()
+      formData.append("file", file)
+      try {
+        const res = await axios.post(`${API_BASE_URL}/api/v1/cv/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        setUploadedCV(res.data)
+      } catch (err) {
+        setUploadedCV(null)
+        alert("Failed to upload and process CV.")
       }
-      setUploadedCV(mockExtractedData)
     }
   }
 
@@ -356,6 +347,41 @@ export default function CVDashboard() {
     setSkillFilter("")
     setMinExperience("")
     setEducationLevel("")
+  }
+
+  // Handler for Filter button (calls /api/v1/search/filter)
+  const handleFilter = async () => {
+    setLoading(true)
+    setShowSemanticDetails(false)
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/v1/search/filter`, {
+        params: {
+          min_experience_years: formMinExperience || undefined,
+          required_skills: formSkillFilter && formSkillFilter !== "all" ? [formSkillFilter] : undefined,
+          location: formLocationFilter && formLocationFilter !== "all" ? formLocationFilter : undefined,
+          education_level: formEducationLevel && formEducationLevel !== "all" ? formEducationLevel : undefined,
+          limit: 10,
+          offset: 0,
+        },
+        paramsSerializer: params => {
+          const usp = new URLSearchParams()
+          Object.entries(params).forEach(([key, val]) => {
+            if (Array.isArray(val)) {
+              val.forEach(v => usp.append(key, v))
+            } else if (val !== undefined) {
+              usp.append(key, val)
+            }
+          })
+          return usp.toString().replace(/\+/g, '%20')
+        }
+      })
+      setCandidates(res.data)
+    } catch (err) {
+      setCandidates([])
+      alert("Failed to filter candidates.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -519,6 +545,13 @@ export default function CVDashboard() {
                   className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
                 >
                   Semantic Detail Search
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleFilter}
+                  className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
+                >
+                  Filter
                 </Button>
               </div>
             </CardContent>
